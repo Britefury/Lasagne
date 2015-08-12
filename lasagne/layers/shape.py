@@ -15,7 +15,8 @@ __all__ = [
     "dimshuffle",
     "PadLayer",
     "pad",
-    "SliceLayer"
+    "SliceLayer",
+    "CentreCropLayer",
 ]
 
 
@@ -433,5 +434,5 @@ class CentreCropLayer(Layer):
             else:
                 offset = (dim - crop) // 2
                 slices.append(slice(offset, offset + crop))
-        slices.extend([slice(None)] * (len(shape) - len(slices)))
+        slices.extend([slice(None)] * (input.ndim - len(slices)))
         return input[slices]

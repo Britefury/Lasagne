@@ -275,3 +275,27 @@ def test_slice_layer():
     aeq(get_output(l_slice_ax0, x).eval(), x1)
     aeq(get_output(l_slice_ax1, x).eval(), x2)
     aeq(get_output(l_slice_ax2, x).eval(), x3)
+
+
+def test_centre_crop_layer():
+    from lasagne.layers import CentreCropLayer, InputLayer,\
+        get_output_shape, get_output
+    from numpy.testing import assert_array_almost_equal as aeq
+    in_shp = (4, 5, 6, 6)
+    l_inp = InputLayer(in_shp)
+    l_crop_0 = CentreCropLayer(l_inp, crop_shape=(2, 3, 3, 2))
+    l_crop_1 = CentreCropLayer(l_inp, crop_shape=(2, 3))
+    l_crop_2 = CentreCropLayer(l_inp, crop_shape=(None, 3, None, 2))
+
+    x = np.arange(np.prod(in_shp)).reshape(in_shp).astype('float32')
+    x0 = x[1:3, 1:4, 1:4, 2:4]
+    x1 = x[1:3, 1:4, :, :]
+    x2 = x[:, 1:4, :, 2:4]
+
+    assert get_output_shape(l_crop_0) == x0.shape
+    assert get_output_shape(l_crop_1) == x1.shape
+    assert get_output_shape(l_crop_2) == x2.shape
+
+    aeq(get_output(l_crop_0, x).eval(), x0)
+    aeq(get_output(l_crop_1, x).eval(), x1)
+    aeq(get_output(l_crop_2, x).eval(), x2)
