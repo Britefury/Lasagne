@@ -385,3 +385,53 @@ class SliceLayer(Layer):
         if axis < 0:
             axis += input.ndim
         return input[(slice(None),) * axis + (self.slice,)]
+
+
+class CentreCropLayer(Layer):
+    """
+    Crops the input to a specified size, choosing the central region.
+
+    Parameters
+    ----------
+    incoming : a :class:`Layer` instance or a tuple
+        The layer feeding into this layer, or the expected input shape
+
+    crop_shape : sequence of ints or Nones
+        The desired size in each axis; `None` indicates that the axis should
+        be left unchanged, an int indicates that the input should be cropped
+        in the corresponding axis so that the central portion of the
+        specified size remains.
+
+    Examples
+    --------
+    >>> from lasagne.layers import CentreCropLayer, InputLayer
+    >>> l_in = InputLayer((10, 20, 30))
+    >>> CentreCropLayer(l_in, crop_shape=(6, 8, 10)).output_shape
+    ... # equals input[2::8, 6:14, 10:20]
+    (6, 8, 10)
+    >>> CentreCropLayer(l_in, crop_shape=(6, None, 10)).output_shape
+    ... # equals input[2::8, :, 10:20]
+    (6, 20, 10)
+    """
+    def __init__(self, incoming, crop_shape, **kwargs):
+        super(CentreCropLayer, self).__init__(incoming, **kwargs)
+        self.crop_shape = crop_shape
+
+    def get_output_shape_for(self, input_shape):
+        output_shape = list(input_shape)
+        for i, (dim, crop) in enumerate(zip(output_shape, self.crop_shape)):
+            if dim is not None and crop is not None:
+                output_shape[i] = crop
+        return tuple(output_shape)
+
+    def get_output_for(self, input, **kwargs):
+        slices = []
+        shape = input.shape
+        for dim, crop in zip(shape, self.crop_shape):
+            if crop is None:
+                slices.append(slice(None))
+            else:
+                offset = (dim - crop) // 2
+                slices.append(slice(offset, offset + crop))
+        slices.extend([slice(None)] * (len(shape) - len(slices)))
+        return input[slices]
