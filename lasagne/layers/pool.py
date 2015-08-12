@@ -332,8 +332,8 @@ class Upscale2DLayer (Layer):
 
         y = self.scale_factor[0]
         x = self.scale_factor[1]
-        for j in xrange(y):
-            for i in xrange(x):
+        for j in range(y):
+            for i in range(x):
                 upscaled = T.set_subtensor(upscaled[:, :, j::y, i::x], input)
 
         return upscaled
