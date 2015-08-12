@@ -10,6 +10,7 @@ __all__ = [
     "MaxPool1DLayer",
     "MaxPool2DLayer",
     "Pool2DLayer",
+    "Upscale2DLayer",
     "FeaturePoolLayer",
     "FeatureWTALayer",
     "GlobalPoolLayer",
