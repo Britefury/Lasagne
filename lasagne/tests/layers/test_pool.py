@@ -77,8 +77,8 @@ def upscale_2d_shape(shape, scale_factor):
 
 def upscale_2d(data, scale_factor):
     upscaled = np.zeros(upscale_2d_shape(data.shape, scale_factor))
-    for j in xrange(scale_factor[0]):
-        for i in xrange(scale_factor[1]):
+    for j in range(scale_factor[0]):
+        for i in range(scale_factor[1]):
             upscaled[:, :, j::scale_factor[0], i::scale_factor[1]] = data
     return upscaled
 
