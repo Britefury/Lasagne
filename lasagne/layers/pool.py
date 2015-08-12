@@ -291,6 +291,54 @@ class MaxPool2DLayer(Pool2DLayer):
 # TODO: add MaxPool3DLayer
 
 
+class Upscale2DLayer (Layer):
+    """
+    2D upscaling layer layer
+
+    Performs 2D upscaling over the two trailing axes of a 4D input tensor.
+
+    Parameters
+    ----------
+    incoming : a :class:`Layer` instance or tuple
+        The layer feeding into this layer, or the expected input shape.
+
+    scale_factor : integer or iterable
+        The scale factor in each dimensions. If an integer, it is promoted to
+        a square scale factor region. If an iterable, it should have two
+        elements.
+
+    **kwargs
+        Any additional keyword arguments are passed to the :class:`Layer`
+        superclass.
+    """
+
+    def __init__(self, incoming, scale_factor, **kwargs):
+        super(Upscale2DLayer, self).__init__(incoming, **kwargs)
+
+        self.scale_factor = as_tuple(scale_factor, 2)
+
+    def get_output_shape_for(self, input_shape):
+        output_shape = list(input_shape)  # copy / convert to mutable list
+        output_shape[2] = input_shape[2] * self.scale_factor[0] \
+            if input_shape[2] is not None else None
+        output_shape[3] = input_shape[3] * self.scale_factor[1] \
+            if input_shape[3] is not None else None
+        return tuple(output_shape)
+
+    def get_output_for(self, input, **kwargs):
+        upscaled = T.zeros((input.shape[0], input.shape[1],
+                            input.shape[2] * self.scale_factor[0],
+                            input.shape[3] * self.scale_factor[1]))
+
+        y = self.scale_factor[0]
+        x = self.scale_factor[1]
+        for j in xrange(y):
+            for i in xrange(x):
+                upscaled = T.set_subtensor(upscaled[:, :, j::y, i::x], input)
+
+        return upscaled
+
+
 class FeaturePoolLayer(Layer):
     """
     lasagne.layers.FeaturePoolLayer(incoming, pool_size, axis=1,
