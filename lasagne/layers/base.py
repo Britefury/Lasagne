@@ -1,5 +1,7 @@
 from collections import OrderedDict
 
+from theano import tensor as T
+
 from .. import utils
 
 
@@ -225,6 +227,12 @@ class MergeLayer(Layer):
     It should be subclassed when implementing new types of layers that obtain
     their input from multiple layers.
     """
+    CROP_NONE = None
+    CROP_LOWER = 'lower'
+    CROP_CENTER = 'center'
+    CROP_UPPER = 'upper'
+
+
     def __init__(self, incomings, name=None):
         """
         Instantiates the layer.
@@ -300,3 +308,74 @@ class MergeLayer(Layer):
         `NotImplementedError`.
         """
         raise NotImplementedError
+
+    @staticmethod
+    def _merge_input_shapes(input_shapes, crop_modes):
+        if crop_modes is None:
+            return input_shapes[0]
+        else:
+            result = []
+            for sh, cr in zip(input_shapes, crop_modes):
+                if cr is None:
+                    result.append(sh[0])
+                elif cr in {MergeLayer.CROP_LOWER, MergeLayer.CROP_CENTER, MergeLayer.CROP_UPPER}:
+                    result.append(min(sh))
+            return tuple(result)
+
+    @staticmethod
+    def _crop_inputs(inputs, crop_modes):
+        if crop_modes is None:
+            # No cropping in any dimension
+            return inputs
+        else:
+            # Get the number of dimensions
+            ndim = inputs[0].ndim
+            # Get the shape of each input, where each shape will be a Theano
+            # expression
+            shapes = [input.shape for input in inputs]
+            # Convert the shapes to a matrix expression
+            shapes_tensor = T.as_tensor_variable(shapes)
+            # Min along axis 0 to get the minimum size in each dimension
+            min_shape = T.min(shapes_tensor, axis=0)
+
+            # Nested list of slices; each list in `slices` corresponds to
+            # an input and contains a slice for each dimension
+            slices_by_input = [[] for i in range(ndim)]
+
+            # If there are more dimensions than crop modes, pad out the crop
+            # modes
+            if ndim > len(crop_modes):
+                crop_modes = list(crop_modes) + \
+                             [None] * (ndim - len(crop_modes))
+
+            # For each dimension
+            for dim, cr in enumerate(crop_modes):
+                if cr == MergeLayer.CROP_NONE:
+                    # Don't crop this dimension
+                    slice_all = slice(None)
+                    for slices in slices_by_input:
+                        slices.append(slice_all)
+                else:
+                    # We crop all inputs in the dimension `dim` so that they
+                    # are the minimum found in this dimension from all inputs
+                    sz = min_shape[dim]
+                    if cr == MergeLayer.CROP_LOWER:
+                        # Choose the first `sz` elements
+                        slc_lower = slice(None, sz)
+                        for slices in slices_by_input:
+                            slices.append(slc_lower)
+                    elif cr == MergeLayer.CROP_UPPER:
+                        # Choose the last `sz` elements
+                        slc_upper = slice(-sz, None)
+                        for slices in slices_by_input:
+                            slices.append(slc_upper)
+                    elif cr == MergeLayer.CROP_CENTER:
+                        # Choose `sz` elements from the center
+                        for sh, slices in zip(shapes, slices_by_input):
+                            offset = (sh[dim] - sz) // 2
+                            slices.append(slice(offset, offset+sz))
+                    else:
+                        raise ValueError('Unknown crop mode \'{0}\''.format(cr))
+
+            return [input[slices] for input, slices in
+                    zip(inputs, slices_by_input)]
