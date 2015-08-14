@@ -170,7 +170,8 @@ class ConcatLayer(MergeCropLayer):
             # If cropping is enabled, don't crop on the selected axis
             cropping = list(cropping)
             cropping[axis] = MergeCropLayer.CROP_NONE
-        super(ConcatLayer, self).__init__(incomings, cropping=cropping, **kwargs)
+        super(ConcatLayer, self).__init__(incomings, cropping=cropping,
+                                          **kwargs)
         self.axis = axis
 
     def get_output_shape_for(self, input_shapes):

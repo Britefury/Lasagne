@@ -5,6 +5,9 @@ Merge layers
 
 .. currentmodule:: lasagne.layers
 
+.. autoclass:: MergeCropLayer
+    :members:
+
 .. autoclass:: ConcatLayer
     :members:
 
