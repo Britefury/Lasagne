@@ -13,7 +13,7 @@ __all__ = [
 
 class MergeCropLayer(MergeLayer):
     """
-    This class adds cropping to MergeLayer.
+    This abstract base class class adds cropping to MergeLayer.
 
     Cropping takes a sequence of inputs and crops them per-axis in order to
     ensure that their sizes are consistent so that they can be combined
@@ -162,7 +162,8 @@ class ConcatLayer(MergeCropLayer):
         Axis which inputs are joined over
 
     cropping : None or [crop]
-        Cropping for each input axis. Cropping is
+        Cropping for each input axis. Cropping is described in the docstring
+        for `MergeCropLayer`
     """
     def __init__(self, incomings, axis=1, cropping=None, **kwargs):
         if cropping is not None:
@@ -201,6 +202,10 @@ class ElemwiseMergeLayer(MergeCropLayer):
         the merge function to use. Should take two arguments and return the
         updated value. Some possible merge functions are ``theano.tensor``:
         ``mul``, ``add``, ``maximum`` and ``minimum``.
+
+    cropping : None or [crop]
+        Cropping for each input axis. Cropping is described in the docstring
+        for `MergeCropLayer`
 
     See Also
     --------
@@ -244,6 +249,10 @@ class ElemwiseSumLayer(ElemwiseMergeLayer):
         A same-sized list of coefficients, or a single coefficient that
         is to be applied to all instances. By default, these will not
         be included in the learnable parameters of this layer.
+
+    cropping : None or [crop]
+        Cropping for each input axis. Cropping is described in the docstring
+        for `MergeCropLayer`
 
     Notes
     -----
