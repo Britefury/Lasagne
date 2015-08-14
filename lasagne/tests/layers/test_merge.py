@@ -16,10 +16,12 @@ class TestMergeCropLayer:
             MergeCropLayer.CROP_UPPER
         ])
 
-        assert crop0._merge_input_shapes(
-            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == (1, 2, 3, 4)
-        assert crop1._merge_input_shapes(
-            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == (1, 2, 3, 2)
+        assert crop0._crop_input_shapes(
+            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == \
+            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]
+        assert crop1._crop_input_shapes(
+            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == \
+            [(1, 2, 3, 2), (5, 2, 3, 2), (5, 2, 3, 2)]
 
     def test_crop_inputs(self):
         from lasagne.layers.merge import MergeCropLayer
@@ -102,10 +104,29 @@ class TestConcatLayer:
         from lasagne.layers.merge import ConcatLayer
         return ConcatLayer([Mock(), Mock()], axis=1)
 
+    @pytest.fixture
+    def crop_layer_0(self):
+        from lasagne.layers.merge import ConcatLayer, MergeCropLayer
+        return ConcatLayer([Mock(), Mock()], axis=0,
+                           cropping=[MergeCropLayer.CROP_LOWER] * 2)
+
+    @pytest.fixture
+    def crop_layer_1(self):
+        from lasagne.layers.merge import ConcatLayer, MergeCropLayer
+        return ConcatLayer([Mock(), Mock()], axis=1,
+                           cropping=[MergeCropLayer.CROP_LOWER] * 2)
+
     def test_get_output_shape_for(self, layer):
         input_shapes = [(3, 2), (3, 5)]
         result = layer.get_output_shape_for(input_shapes)
         assert result == (3, 7)
+
+    def test_get_output_shape_for_cropped(self, crop_layer_0, crop_layer_1):
+        input_shapes = [(3, 2), (4, 5)]
+        result_0 = crop_layer_0.get_output_shape_for(input_shapes)
+        result_1 = crop_layer_1.get_output_shape_for(input_shapes)
+        assert result_0 == (7, 2)
+        assert result_1 == (3, 7)
 
     def test_get_output_for(self, layer):
         inputs = [theano.shared(numpy.ones((3, 3))),
@@ -115,12 +136,30 @@ class TestConcatLayer:
         desired_result = numpy.hstack([input.get_value() for input in inputs])
         assert (result_eval == desired_result).all()
 
+    def test_get_output_for_cropped(self, crop_layer_0, crop_layer_1):
+        x0 = numpy.random.random((5, 3))
+        x1 = numpy.random.random((4, 2))
+        inputs = [theano.shared(x0),
+                  theano.shared(x1)]
+        result_0 = crop_layer_0.get_output_for(inputs).eval()
+        result_1 = crop_layer_1.get_output_for(inputs).eval()
+        desired_result_0 = numpy.concatenate([x0[:, :2], x1[:, :2]], axis=0)
+        desired_result_1 = numpy.concatenate([x0[:4, :], x1[:4, :]], axis=1)
+        assert (result_0 == desired_result_0).all()
+        assert (result_1 == desired_result_1).all()
+
 
 class TestElemwiseSumLayer:
     @pytest.fixture
     def layer(self):
         from lasagne.layers.merge import ElemwiseSumLayer
         return ElemwiseSumLayer([Mock(), Mock()], coeffs=[2, -1])
+
+    @pytest.fixture
+    def crop_layer(self):
+        from lasagne.layers.merge import ElemwiseSumLayer, MergeCropLayer
+        return ElemwiseSumLayer([Mock(), Mock()], coeffs=[2, -1],
+                                cropping=[MergeCropLayer.CROP_LOWER] * 2)
 
     def test_get_output_for(self, layer):
         a = numpy.array([[0, 1], [2, 3]])
@@ -131,6 +170,16 @@ class TestElemwiseSumLayer:
         result_eval = result.eval()
         desired_result = 2*a - b
         assert (result_eval == desired_result).all()
+
+    def test_get_output_for_cropped(self, crop_layer):
+        from numpy.testing import assert_array_almost_equal as aeq
+        x0 = numpy.random.random((5, 3))
+        x1 = numpy.random.random((4, 2))
+        inputs = [theano.shared(x0),
+                  theano.shared(x1)]
+        result = crop_layer.get_output_for(inputs).eval()
+        desired_result = 2*x0[:4, :2] - x1[:4, :2]
+        aeq(result, desired_result)
 
     def test_bad_coeffs_fails(self, layer):
         from lasagne.layers.merge import ElemwiseSumLayer
