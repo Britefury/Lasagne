@@ -313,6 +313,8 @@ class Upscale2DLayer (Layer):
         superclass.
     """
 
+    _USE_SET_SUBTENSOR = False
+
     def __init__(self, incoming, scale_factor, **kwargs):
         super(Upscale2DLayer, self).__init__(incoming, **kwargs)
 
@@ -327,17 +329,27 @@ class Upscale2DLayer (Layer):
         return tuple(output_shape)
 
     def get_output_for(self, input, **kwargs):
-        upscaled = T.zeros((input.shape[0], input.shape[1],
-                            input.shape[2] * self.scale_factor[0],
-                            input.shape[3] * self.scale_factor[1]))
+        if self._USE_SET_SUBTENSOR:
+            upscaled = T.zeros((input.shape[0], input.shape[1],
+                                input.shape[2] * self.scale_factor[0],
+                                input.shape[3] * self.scale_factor[1]))
 
-        y = self.scale_factor[0]
-        x = self.scale_factor[1]
-        for j in range(y):
-            for i in range(x):
-                upscaled = T.set_subtensor(upscaled[:, :, j::y, i::x], input)
+            y = self.scale_factor[0]
+            x = self.scale_factor[1]
+            for j in range(y):
+                for i in range(x):
+                    upscaled = T.set_subtensor(upscaled[:, :, j::y, i::x], input)
 
-        return upscaled
+            return upscaled
+        else:
+            y = self.scale_factor[0]
+            x = self.scale_factor[1]
+            upscaled = input
+            if x > 1:
+                upscaled = T.extra_ops.repeat(upscaled, x, 3)
+            if y > 1:
+                upscaled = T.extra_ops.repeat(upscaled, y, 2)
+            return upscaled
 
 
 class FeaturePoolLayer(Layer):
