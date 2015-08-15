@@ -36,22 +36,47 @@ class MergeCropLayer(MergeLayer):
     portion in this axis (`a[offset:offset+crop_size, ...]` where
     `offset = (a.shape[0]-crop_size)//2)
 
-    For example, given three inputs, whose shapes are:
-    `a.shape == (1, 2, 3, 4)`
-    `b.shape == (5, 4, 4, 2)`
-    `c.shape == (7, 1, 8, 9)`
+    For example, given three inputs:
 
-    with crop modes `[CROP_NONE, CROP_LOWER, CROP_CENTER, CROP_UPPER]`
+    >>> import numpy
+    >>> import theano
+    >>> from mock import Mock
+
+    >>> a = numpy.random.random((1, 2, 3, 4))
+    >>> b = numpy.random.random((5, 4, 4, 2))
+    >>> c = numpy.random.random((7, 1, 8, 9))
+
+    Create a `MergeCropLayer` with a different crop mode on each axis:
+
+    >>> l = MergeCropLayer([Mock(), Mock(), Mock()], \
+                cropping=[MergeCropLayer.CROP_NONE, \
+                          MergeCropLayer.CROP_LOWER, \
+                          MergeCropLayer.CROP_CENTER, \
+                          MergeCropLayer.CROP_UPPER])
+
+    For this demo, directly call the _crop_inputs method to
+    crop the inputs (note that they are converted to Theano vars first,
+    and that the results are converted back from Theano expressions to
+    numpy arrays by calling `eval()`)
+    >>> xa, xb, xc = l._crop_inputs([theano.shared(a), \
+                                     theano.shared(b), \
+                                     theano.shared(c)])
+    >>> xa, xb, xc = xa.eval(), xb.eval(), xc.eval()
 
     They will be left as is in axis 0 and cropped in all others,
     choosing the lower, center and upper portions:
 
-    a[:, :1, :3, -2:]   # Choose all, lower 1 element, 3 central (all)
-                        # and upper 2
-    b[:, :1, :3, -2:]   # Choose all, lower 1 element, 3 central starting at 0
-                        # and upper 2 (all)
-    c[:, :1, 2:5:, -2:] # Choose all, lower 1 element (all),
-                        # 3 central starting at 2 and upper 2 (all)
+    Axis 0: choose all, axis 1: lower 1 element,
+    axis 2: central 3 (all) and axis 3: upper 2
+    >>> assert (xa == a[:, :1, :3, -2:]).all()
+
+    Axis 0: choose all, axis 1: lower 1 element,
+    axis 2: central 3 starting at 0 and axis 3: upper 2 (all)
+    >>> assert (xb == b[:, :1, :3, -2:]).all()
+
+    Axis 0: all, axis 1: lower 1 element (all),
+    axis 2: central 3 starting at 2 and axis 3: upper 2
+    >>> assert (xc == c[:, :1, 2:5:, -2:]).all()
     """
     CROP_NONE = None
     CROP_LOWER = 'lower'
@@ -85,7 +110,7 @@ class MergeCropLayer(MergeLayer):
                     result.append([min(sh)] * len(sh))
                 else:
                     raise ValueError('Unknown crop mode \'{0}\''.format(cr))
-            return zip(*result)
+            return [tuple(sh) for sh in zip(*result)]
 
     def _crop_inputs(self, inputs):
         if self.cropping is None:

@@ -6,7 +6,7 @@ import theano
 
 class TestMergeCropLayer:
     # Test internal helper methods of MergeCropLayer
-    def test_merge_shapes(self):
+    def test_crop_input_shapes(self):
         from lasagne.layers.merge import MergeCropLayer
         crop0 = MergeCropLayer([], cropping=None)
         crop1 = MergeCropLayer([], cropping=[
@@ -15,6 +15,18 @@ class TestMergeCropLayer:
             MergeCropLayer.CROP_CENTER,
             MergeCropLayer.CROP_UPPER
         ])
+        # Too few crop modes; should get padded with None
+        crop2 = MergeCropLayer([], cropping=[
+            MergeCropLayer.CROP_LOWER,
+            MergeCropLayer.CROP_UPPER
+        ])
+        # Invalid crop modes
+        crop_bad = MergeCropLayer([], cropping=[
+            MergeCropLayer.CROP_LOWER,
+            MergeCropLayer.CROP_UPPER,
+            'foo',
+            'bar'
+        ])
 
         assert crop0._crop_input_shapes(
             [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == \
@@ -22,6 +34,13 @@ class TestMergeCropLayer:
         assert crop1._crop_input_shapes(
             [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == \
             [(1, 2, 3, 2), (5, 2, 3, 2), (5, 2, 3, 2)]
+        assert crop2._crop_input_shapes(
+            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == \
+            [(1, 2, 3, 4), (1, 2, 7, 8), (1, 2, 3, 2)]
+
+        with pytest.raises(ValueError):
+            crop_bad._crop_input_shapes(
+                [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)])
 
     def test_crop_inputs(self):
         from lasagne.layers.merge import MergeCropLayer
@@ -50,6 +69,16 @@ class TestMergeCropLayer:
             MergeCropLayer.CROP_UPPER,
             MergeCropLayer.CROP_UPPER,
             MergeCropLayer.CROP_UPPER
+        ])
+        crop_x = MergeCropLayer([], cropping=[
+            MergeCropLayer.CROP_LOWER,
+            MergeCropLayer.CROP_LOWER,
+        ])
+        crop_bad = MergeCropLayer([], cropping=[
+            MergeCropLayer.CROP_LOWER,
+            MergeCropLayer.CROP_LOWER,
+            'foo',
+            'bar'
         ])
 
         x0 = numpy.random.random((2, 3, 5, 7))
@@ -96,6 +125,13 @@ class TestMergeCropLayer:
                   [x0[:1, :2, 1:4, 2:4], x1[:, :, :, 1:3], x2[2:3, :2, :3, :]])
         crop_test(crop_u, [x0, x1, x2],
                   [x0[1:, 1:, 2:, 5:], x1[:, :, :, 2:], x2[5:, 1:, 1:, :]])
+
+        crop_test(crop_x, [x0, x1, x2],
+                  [x0[:1, :2, :, :], x1[:1, :2, :, :], x2[:1, :2, :, :]])
+
+        with pytest.raises(ValueError):
+            crop_test(crop_bad, [x0, x1, x2],
+                      [x0[:1, :2, :, :], x1[:1, :2, :, :], x2[:1, :2, :, :]])
 
 
 class TestConcatLayer:
