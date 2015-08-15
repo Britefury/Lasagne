@@ -4,90 +4,51 @@ import pytest
 import theano
 
 
-class TestMergeCropLayer:
+class TestAutocrop:
     # Test internal helper methods of MergeCropLayer
-    def test_crop_input_shapes(self):
-        from lasagne.layers.merge import MergeCropLayer
-        crop0 = MergeCropLayer([], cropping=None)
-        crop1 = MergeCropLayer([], cropping=[
-            MergeCropLayer.CROP_NONE,
-            MergeCropLayer.CROP_LOWER,
-            MergeCropLayer.CROP_CENTER,
-            MergeCropLayer.CROP_UPPER
-        ])
+    def test_autocrop_array_shapes(self):
+        from lasagne.layers.merge import autocrop_array_shapes, \
+            CROP_NONE, CROP_LOWER, CROP_CENTER, CROP_UPPER
+        crop0 = None
+        crop1 = [CROP_NONE, CROP_LOWER, CROP_CENTER, CROP_UPPER]
         # Too few crop modes; should get padded with None
-        crop2 = MergeCropLayer([], cropping=[
-            MergeCropLayer.CROP_LOWER,
-            MergeCropLayer.CROP_UPPER
-        ])
+        crop2 = [CROP_LOWER, CROP_UPPER]
         # Invalid crop modes
-        crop_bad = MergeCropLayer([], cropping=[
-            MergeCropLayer.CROP_LOWER,
-            MergeCropLayer.CROP_UPPER,
-            'foo',
-            'bar'
-        ])
+        crop_bad = [CROP_LOWER, CROP_UPPER, 'foo', 'bar']
 
-        assert crop0._crop_input_shapes(
-            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == \
+        assert autocrop_array_shapes(
+            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)], crop0) == \
             [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]
-        assert crop1._crop_input_shapes(
-            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == \
+        assert autocrop_array_shapes(
+            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)], crop1) == \
             [(1, 2, 3, 2), (5, 2, 3, 2), (5, 2, 3, 2)]
-        assert crop2._crop_input_shapes(
-            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)]) == \
+        assert autocrop_array_shapes(
+            [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)], crop2) == \
             [(1, 2, 3, 4), (1, 2, 7, 8), (1, 2, 3, 2)]
 
         with pytest.raises(ValueError):
-            crop_bad._crop_input_shapes(
-                [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)])
+            autocrop_array_shapes(
+                [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)], crop_bad)
 
     def test_crop_inputs(self):
-        from lasagne.layers.merge import MergeCropLayer
+        from lasagne.layers.merge import autocrop, \
+            CROP_NONE, CROP_LOWER, CROP_CENTER, CROP_UPPER
         from numpy.testing import assert_array_equal
-        crop_0 = MergeCropLayer([], cropping=None)
-        crop_1 = MergeCropLayer([], cropping=[
-            MergeCropLayer.CROP_NONE,
-            MergeCropLayer.CROP_LOWER,
-            MergeCropLayer.CROP_CENTER,
-            MergeCropLayer.CROP_UPPER
-        ])
-        crop_l = MergeCropLayer([], cropping=[
-            MergeCropLayer.CROP_LOWER,
-            MergeCropLayer.CROP_LOWER,
-            MergeCropLayer.CROP_LOWER,
-            MergeCropLayer.CROP_LOWER
-        ])
-        crop_c = MergeCropLayer([], cropping=[
-            MergeCropLayer.CROP_CENTER,
-            MergeCropLayer.CROP_CENTER,
-            MergeCropLayer.CROP_CENTER,
-            MergeCropLayer.CROP_CENTER
-        ])
-        crop_u = MergeCropLayer([], cropping=[
-            MergeCropLayer.CROP_UPPER,
-            MergeCropLayer.CROP_UPPER,
-            MergeCropLayer.CROP_UPPER,
-            MergeCropLayer.CROP_UPPER
-        ])
-        crop_x = MergeCropLayer([], cropping=[
-            MergeCropLayer.CROP_LOWER,
-            MergeCropLayer.CROP_LOWER,
-        ])
-        crop_bad = MergeCropLayer([], cropping=[
-            MergeCropLayer.CROP_LOWER,
-            MergeCropLayer.CROP_LOWER,
-            'foo',
-            'bar'
-        ])
+        crop_0 = None
+        crop_1 = [CROP_NONE, CROP_LOWER, CROP_CENTER, CROP_UPPER]
+        crop_l = [CROP_LOWER, CROP_LOWER, CROP_LOWER, CROP_LOWER]
+        crop_c = [CROP_CENTER, CROP_CENTER, CROP_CENTER, CROP_CENTER]
+        crop_u = [CROP_UPPER, CROP_UPPER, CROP_UPPER, CROP_UPPER]
+        crop_x = [CROP_LOWER, CROP_LOWER]
+        crop_bad = [CROP_LOWER, CROP_LOWER, 'foo', 'bar']
 
         x0 = numpy.random.random((2, 3, 5, 7))
         x1 = numpy.random.random((1, 2, 3, 4))
         x2 = numpy.random.random((6, 3, 4, 2))
 
-        def crop_test(cr, inputs, expected):
+        def crop_test(cropping, inputs, expected):
             inputs = [theano.shared(x) for x in inputs]
-            outs = cr._crop_inputs(inputs)
+            outs = autocrop(inputs, cropping)
             outs = [o.eval() for o in outs]
             assert len(outs) == len(expected)
             for o, e in zip(outs, expected):
@@ -142,15 +103,15 @@ class TestConcatLayer:
 
     @pytest.fixture
     def crop_layer_0(self):
-        from lasagne.layers.merge import ConcatLayer, MergeCropLayer
+        from lasagne.layers.merge import ConcatLayer, CROP_LOWER
         return ConcatLayer([Mock(), Mock()], axis=0,
-                           cropping=[MergeCropLayer.CROP_LOWER] * 2)
+                           cropping=[CROP_LOWER] * 2)
 
     @pytest.fixture
     def crop_layer_1(self):
-        from lasagne.layers.merge import ConcatLayer, MergeCropLayer
+        from lasagne.layers.merge import ConcatLayer, CROP_LOWER
         return ConcatLayer([Mock(), Mock()], axis=1,
-                           cropping=[MergeCropLayer.CROP_LOWER] * 2)
+                           cropping=[CROP_LOWER] * 2)
 
     def test_get_output_shape_for(self, layer):
         input_shapes = [(3, 2), (3, 5)]
@@ -193,9 +154,9 @@ class TestElemwiseSumLayer:
 
     @pytest.fixture
     def crop_layer(self):
-        from lasagne.layers.merge import ElemwiseSumLayer, MergeCropLayer
+        from lasagne.layers.merge import ElemwiseSumLayer, CROP_LOWER
         return ElemwiseSumLayer([Mock(), Mock()], coeffs=[2, -1],
-                                cropping=[MergeCropLayer.CROP_LOWER] * 2)
+                                cropping=[CROP_LOWER] * 2)
 
     def test_get_output_for(self, layer):
         a = numpy.array([[0, 1], [2, 3]])
