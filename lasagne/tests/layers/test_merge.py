@@ -30,6 +30,11 @@ class TestAutocrop:
             autocrop_array_shapes(
                 [(1, 2, 3, 4), (5, 6, 7, 8), (5, 4, 3, 2)], crop_bad)
 
+        # Inconsistent dimensionality
+        with pytest.raises(ValueError):
+            autocrop_array_shapes(
+                [(1, 2, 3, 4), (5, 6, 7), (5, 4, 3, 2, 10)], crop1)
+
     def test_crop_inputs(self):
         from lasagne.layers.merge import autocrop, \
             CROP_NONE, CROP_LOWER, CROP_CENTER, CROP_UPPER
@@ -92,6 +97,11 @@ class TestAutocrop:
 
         with pytest.raises(ValueError):
             crop_test(crop_bad, [x0, x1, x2],
+                      [x0[:1, :2, :, :], x1[:1, :2, :, :], x2[:1, :2, :, :]])
+
+        # Inconsistent dimensionality
+        with pytest.raises(ValueError):
+            crop_test(crop_bad, [x0[:, :, :, 0], x1, x2[:, :, :, :, None]],
                       [x0[:1, :2, :, :], x1[:1, :2, :, :], x2[:1, :2, :, :]])
 
 

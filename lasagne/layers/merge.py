@@ -50,12 +50,13 @@ def autocrop(inputs, cropping):
 
     Parameters
     ----------
-    inputs : the input arrays in the form of a list of Theano expressions
+    inputs : list of Theano expressions
+        The input arrays in the form of a list of Theano expressions
 
-    cropping : a list of cropping modes, one for each axis. If length of
-        `cropping` is less than the number of axes in the inputs, it is
-        padded with `CROP_NONE`. If `cropping` is None, `input_shapes`
-        is returned as is.
+    cropping : list of cropping modes
+        Cropping modes, one for each axis. If length of `cropping` is less
+        than the number of axes in the inputs, it is padded with `CROP_NONE`.
+        If `cropping` is None, `input_shapes` is returned as is.
 
     Returns
     -------
@@ -68,7 +69,6 @@ def autocrop(inputs, cropping):
 
     >>> import numpy
     >>> import theano
-    >>> from mock import Mock
 
     >>> a = numpy.random.random((1, 2, 3, 4))
     >>> b = numpy.random.random((5, 4, 4, 2))
@@ -91,15 +91,18 @@ def autocrop(inputs, cropping):
 
     Axis 0: choose all, axis 1: lower 1 element,
     axis 2: central 3 (all) and axis 3: upper 2
-    >>> assert (xa == a[:, :1, :3, -2:]).all()
+    >>> (xa == a[:, :1, :3, -2:]).all()
+    True
 
     Axis 0: choose all, axis 1: lower 1 element,
     axis 2: central 3 starting at 0 and axis 3: upper 2 (all)
-    >>> assert (xb == b[:, :1, :3, -2:]).all()
+    >>> (xb == b[:, :1, :3, -2:]).all()
+    True
 
     Axis 0: all, axis 1: lower 1 element (all),
     axis 2: central 3 starting at 2 and axis 3: upper 2
-    >>> assert (xc == c[:, :1, 2:5:, -2:]).all()
+    >>> (xc == c[:, :1, 2:5:, -2:]).all()
+    True
     """
     if cropping is None:
         # No cropping in any dimension
@@ -107,6 +110,13 @@ def autocrop(inputs, cropping):
     else:
         # Get the number of dimensions
         ndim = inputs[0].ndim
+        # Check for consistent number of dimensions
+        if not all(input.ndim == ndim for input in inputs):
+            raise ValueError("Not all inputs are of the same "
+                             "dimensionality. Got {0} inputs of "
+                             "dimensionalities {1}.".format(
+                                len(inputs),
+                                [input.ndim for input in inputs]))
         # Get the shape of each input, where each shape will be a Theano
         # expression
         shapes = [input.shape for input in inputs]
@@ -164,13 +174,13 @@ def autocrop_array_shapes(input_shapes, cropping):
     """
     Computes the shapes of the given arrays after auto-cropping is applied.
 
-    For more information on cropping, see the `autocrop` function
+    For more information on cropping, see the :func:`autocrop` function
     documentation.
 
     Parameters
     ----------
     input_shapes : the shapes of input arrays prior to cropping in
-        the form if a list of tuples
+        the form of a list of tuples
 
     cropping : a list of cropping modes, one for each axis. If length of
         `cropping` is less than the number of axes in the inputs, it is
@@ -181,7 +191,8 @@ def autocrop_array_shapes(input_shapes, cropping):
     Returns
     -------
     list of tuples
-        each tuple is the
+        each tuple is a cropped version of the corresponding input
+        shape tuple in `input_shapes`
 
     For example, given three input shapes with 4 axes each:
 
@@ -196,9 +207,14 @@ def autocrop_array_shapes(input_shapes, cropping):
     Apply:
 
     >>> cropped_shapes = autocrop_array_shapes([a, b, c], cropping)
-    >>> assert cropped_shapes[0] == (1, 1, 3, 2)
-    >>> assert cropped_shapes[1] == (5, 1, 3, 2)
-    >>> assert cropped_shapes[2] == (7, 1, 3, 2)
+    >>> cropped_shapes[0]
+    (1, 1, 3, 2)
+
+    >>> cropped_shapes[1]
+    (5, 1, 3, 2)
+
+    >>> cropped_shapes[2]
+    (7, 1, 3, 2)
 
     Note that axis 0 remains unchanged, where all the others are cropped
     to the minimum size in that axis.
@@ -206,11 +222,19 @@ def autocrop_array_shapes(input_shapes, cropping):
     if cropping is None:
         return input_shapes
     else:
+        # Check for consistent number of dimensions
+        ndim = len(input_shapes[0])
+        if not all(len(sh) == ndim for sh in input_shapes):
+            raise ValueError("Not all inputs are of the same "
+                             "dimensionality. Got {0} inputs of "
+                             "dimensionalities {1}.".format(
+                                len(input_shapes),
+                                [len(sh) for sh in input_shapes]))
+
         result = []
 
         # If there are more dimensions than cropping entries, pad
         # the cropping
-        ndim = len(input_shapes[0])
         cropping = list(cropping)
         if ndim > len(cropping):
             cropping = list(cropping) + \
@@ -244,7 +268,7 @@ class ConcatLayer(MergeLayer):
 
     cropping : None or [crop]
         Cropping for each input axis. Cropping is described in the docstring
-        for `autocrop`
+        for :func:`autocrop`. Cropping as always disabled for `axis`.
     """
     def __init__(self, incomings, axis=1, cropping=None, **kwargs):
         super(ConcatLayer, self).__init__(incomings, **kwargs)
@@ -287,7 +311,7 @@ class ElemwiseMergeLayer(MergeLayer):
 
     cropping : None or [crop]
         Cropping for each input axis. Cropping is described in the docstring
-        for `autocrop`
+        for :func:`autocrop`
 
     See Also
     --------
@@ -334,7 +358,7 @@ class ElemwiseSumLayer(ElemwiseMergeLayer):
 
     cropping : None or [crop]
         Cropping for each input axis. Cropping is described in the docstring
-        for `autocrop`
+        for :func:`autocrop`
 
     Notes
     -----

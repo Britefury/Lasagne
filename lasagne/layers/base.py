@@ -1,7 +1,5 @@
 from collections import OrderedDict
 
-from theano import tensor as T
-
 from .. import utils
 
 
