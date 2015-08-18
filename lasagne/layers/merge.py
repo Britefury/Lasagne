@@ -4,10 +4,6 @@ from .base import MergeLayer
 
 
 __all__ = [
-    "CROP_NONE",
-    "CROP_LOWER",
-    "CROP_CENTER",
-    "CROP_UPPER",
     "autocrop",
     "autocrop_array_shapes",
     "ConcatLayer",
@@ -15,12 +11,6 @@ __all__ = [
     "ElemwiseMergeLayer",
     "ElemwiseSumLayer",
 ]
-
-
-CROP_NONE = None
-CROP_LOWER = 'lower'
-CROP_CENTER = 'center'
-CROP_UPPER = 'upper'
 
 
 def autocrop(inputs, cropping):
@@ -35,17 +25,16 @@ def autocrop(inputs, cropping):
 
     The per-axis cropping modes are:
 
-    `CROP_NONE` (`None`): this axis is not cropped, inputs are unchanged in
-    this axis
+    `None`: this axis is not cropped, inputs are unchanged in this axis
 
-    `CROP_LOWER` (`'lower'`): inputs are cropped choosing the lower portion
-    in this axis (`a[:crop_size, ...]`)
+    `'lower'`: inputs are cropped choosing the lower portion in this axis
+    (`a[:crop_size, ...]`)
 
-    `CROP_UPPER` (`'lower'`): inputs are cropped choosing the upper portion
-    in this axis (`a[-crop_size:, ...]`)
+    `'upper'`: inputs are cropped choosing the upper portion in this axis
+    (`a[-crop_size:, ...]`)
 
-    `CROP_CENTER` (`'center'`): inputs are cropped choosing the central
-    portion in this axis (`a[offset:offset+crop_size, ...]` where
+    `'center'`: inputs are cropped choosing the central portion in this axis
+    (`a[offset:offset+crop_size, ...]` where
     `offset = (a.shape[0]-crop_size)//2)
 
     Parameters
@@ -55,7 +44,7 @@ def autocrop(inputs, cropping):
 
     cropping : list of cropping modes
         Cropping modes, one for each axis. If length of `cropping` is less
-        than the number of axes in the inputs, it is padded with `CROP_NONE`.
+        than the number of axes in the inputs, it is padded with `None`.
         If `cropping` is None, `input_shapes` is returned as is.
 
     Returns
@@ -76,7 +65,7 @@ def autocrop(inputs, cropping):
 
     Cropping mode for each axis:
 
-    >>> cropping = [CROP_NONE, CROP_LOWER, CROP_CENTER, CROP_UPPER]
+    >>> cropping = [None, 'lower', 'center', 'upper']
 
     Crop (note that the input arrays are converted to Theano vars first,
     and that the results are converted back from Theano expressions to
@@ -138,7 +127,7 @@ def autocrop(inputs, cropping):
 
         # For each dimension
         for dim, cr in enumerate(cropping):
-            if cr == CROP_NONE:
+            if cr is None:
                 # Don't crop this dimension
                 slice_all = slice(None)
                 for slices in slices_by_input:
@@ -147,17 +136,17 @@ def autocrop(inputs, cropping):
                 # We crop all inputs in the dimension `dim` so that they
                 # are the minimum found in this dimension from all inputs
                 sz = min_shape[dim]
-                if cr == CROP_LOWER:
+                if cr == 'lower':
                     # Choose the first `sz` elements
                     slc_lower = slice(None, sz)
                     for slices in slices_by_input:
                         slices.append(slc_lower)
-                elif cr == CROP_UPPER:
+                elif cr == 'upper':
                     # Choose the last `sz` elements
                     slc_upper = slice(-sz, None)
                     for slices in slices_by_input:
                         slices.append(slc_upper)
-                elif cr == CROP_CENTER:
+                elif cr == 'center':
                     # Choose `sz` elements from the center
                     for sh, slices in zip(shapes, slices_by_input):
                         offset = (sh[dim] - sz) // 2
@@ -184,9 +173,9 @@ def autocrop_array_shapes(input_shapes, cropping):
 
     cropping : a list of cropping modes, one for each axis. If length of
         `cropping` is less than the number of axes in the inputs, it is
-        padded with `CROP_NONE`. If `cropping` is None, `input_shapes`
-        is returned as is. For more information on their values and
-        operation, see the `autocrop` documentation.
+        padded with `None`. If `cropping` is None, `input_shapes` is returned
+        as is. For more information on their values and operation, see the
+        :func:`autocrop` documentation.
 
     Returns
     -------
@@ -202,7 +191,7 @@ def autocrop_array_shapes(input_shapes, cropping):
 
     Cropping mode for each axis:
 
-    >>> cropping = [CROP_NONE, CROP_LOWER, CROP_CENTER, CROP_UPPER]
+    >>> cropping = [None, 'lower', 'center', 'upper']
 
     Apply:
 
@@ -241,11 +230,9 @@ def autocrop_array_shapes(input_shapes, cropping):
                          [None] * (ndim - len(cropping))
 
         for sh, cr in zip(zip(*input_shapes), cropping):
-            if cr == CROP_NONE:
+            if cr is None:
                 result.append(sh)
-            elif cr in {CROP_LOWER,
-                        CROP_CENTER,
-                        CROP_UPPER}:
+            elif cr in {'lower', 'center', 'upper'}:
                 result.append([min(sh)] * len(sh))
             else:
                 raise ValueError('Unknown crop mode \'{0}\''.format(cr))
@@ -268,7 +255,7 @@ class ConcatLayer(MergeLayer):
 
     cropping : None or [crop]
         Cropping for each input axis. Cropping is described in the docstring
-        for :func:`autocrop`. Cropping as always disabled for `axis`.
+        for :func:`autocrop`. Cropping is always disabled for `axis`.
     """
     def __init__(self, incomings, axis=1, cropping=None, **kwargs):
         super(ConcatLayer, self).__init__(incomings, **kwargs)
@@ -276,7 +263,7 @@ class ConcatLayer(MergeLayer):
         if cropping is not None:
             # If cropping is enabled, don't crop on the selected axis
             cropping = list(cropping)
-            cropping[axis] = CROP_NONE
+            cropping[axis] = None
         self.cropping = cropping
 
     def get_output_shape_for(self, input_shapes):
