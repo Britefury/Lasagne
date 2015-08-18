@@ -34,8 +34,8 @@ def autocrop(inputs, cropping):
     (`a[-crop_size:, ...]`)
 
     `'center'`: inputs are cropped choosing the central portion in this axis
-    (`a[offset:offset+crop_size, ...]` where
-    `offset = (a.shape[0]-crop_size)//2)
+    (``a[offset:offset+crop_size, ...]`` where
+    ``offset = (a.shape[0]-crop_size)//2)``
 
     Parameters
     ----------
@@ -45,7 +45,7 @@ def autocrop(inputs, cropping):
     cropping : list of cropping modes
         Cropping modes, one for each axis. If length of `cropping` is less
         than the number of axes in the inputs, it is padded with `None`.
-        If `cropping` is None, `input_shapes` is returned as is.
+        If `cropping` is None, `input` is returned as is.
 
     Returns
     -------
