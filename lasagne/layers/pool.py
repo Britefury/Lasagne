@@ -292,7 +292,7 @@ class MaxPool2DLayer(Pool2DLayer):
 # TODO: add MaxPool3DLayer
 
 
-class Upscale2DLayer (Layer):
+class Upscale2DLayer(Layer):
     """
     2D upscaling layer layer
 
@@ -304,7 +304,7 @@ class Upscale2DLayer (Layer):
         The layer feeding into this layer, or the expected input shape.
 
     scale_factor : integer or iterable
-        The scale factor in each dimensions. If an integer, it is promoted to
+        The scale factor in each dimension. If an integer, it is promoted to
         a square scale factor region. If an iterable, it should have two
         elements.
 
@@ -318,12 +318,16 @@ class Upscale2DLayer (Layer):
 
         self.scale_factor = as_tuple(scale_factor, 2)
 
+        if self.scale_factor[0] < 1 or self.scale_factor[1] < 1:
+            raise ValueError('Scale factor must be >= 1, not {0}'.format(
+                self.scale_factor))
+
     def get_output_shape_for(self, input_shape):
         output_shape = list(input_shape)  # copy / convert to mutable list
-        output_shape[2] = input_shape[2] * self.scale_factor[0] \
-            if input_shape[2] is not None else None
-        output_shape[3] = input_shape[3] * self.scale_factor[1] \
-            if input_shape[3] is not None else None
+        if output_shape[2] is not None:
+            output_shape[2] *= self.scale_factor[0]
+        if output_shape[3] is not None:
+            output_shape[3] *= self.scale_factor[1]
         return tuple(output_shape)
 
     def get_output_for(self, input, **kwargs):

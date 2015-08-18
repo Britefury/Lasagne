@@ -498,6 +498,19 @@ class TestUpscale2DLayer:
             scale_factor=scale_factor,
         )
 
+    def test_invalid_scale_factor(self):
+        from lasagne.layers.pool import Upscale2DLayer
+        from mock import Mock
+        inlayer = self.input_layer((128, 3, 32, 32))
+        with pytest.raises(ValueError):
+            Upscale2DLayer(inlayer, scale_factor=0)
+        with pytest.raises(ValueError):
+            Upscale2DLayer(inlayer, scale_factor=-1)
+        with pytest.raises(ValueError):
+            Upscale2DLayer(inlayer, scale_factor=(0, 2))
+        with pytest.raises(ValueError):
+            Upscale2DLayer(inlayer, scale_factor=(2, 0))
+
     @pytest.mark.parametrize(
         "scale_factor", list(scale_factor_test_sets()))
     def test_get_output_for(self, scale_factor):
